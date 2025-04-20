@@ -238,96 +238,98 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
 -- Variables
 local following = false
 local targetPlayer = nil
 local animationId = "189854234"
 local activeAnimation
 
--- Toggle Key (example: 'T')
-local toggleKey = Enum.KeyCode.T
+-- Rayfield Toggle Implementation
 
--- Functionality
-local function toggleFollow()
-    if not following then
-        -- Start following
-        print("Enter target name in the console:")
-        local targetName = io.read() -- User inputs target name in the console
-        targetPlayer = nil
+Tab:CreateToggle({
+    Name = "Follow Target",
+    CurrentValue = false,
+    Flag = "FollowToggle", -- Unique identifier for this toggle
+    Callback = function(state)
+        following = state
 
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Name:lower():find(targetName:lower()) or player.DisplayName:lower():find(targetName:lower()) then
-                targetPlayer = player
-                break
-            end
-        end
+        if following then
+            -- Start following
+            print("Enter target name in the console:")
+            local targetName = io.read() -- User inputs target name in the console
+            targetPlayer = nil
 
-        if targetPlayer and targetPlayer.Character then
-            following = true
-            print("Following started.")
-
-            -- Play Animation
-            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                local animation = Instance.new("Animation")
-                animation.AnimationId = "rbxassetid://" .. animationId
-                activeAnimation = humanoid:LoadAnimation(animation)
-                activeAnimation:Play()
-            end
-
-            coroutine.wrap(function()
-                while following do
-                    local targetCharacter = targetPlayer.Character
-                    if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
-                        local targetHRP = targetCharacter.HumanoidRootPart
-
-                        -- Forward and backward motion
-                        local forwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, -2.5)
-                        local backwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, -1.3)
-
-                        -- Tween forward
-                        local tweenForward = TweenService:Create(
-                            LocalPlayer.Character:FindFirstChild("HumanoidRootPart"),
-                            TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-                            {CFrame = forwardCFrame}
-                        )
-                        tweenForward:Play()
-                        tweenForward.Completed:Wait()
-
-                        -- Tween backward
-                        local tweenBackward = TweenService:Create(
-                            LocalPlayer.Character:FindFirstChild("HumanoidRootPart"),
-                            TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-                            {CFrame = backwardCFrame}
-                        )
-                        tweenBackward:Play()
-                        tweenBackward.Completed:Wait()
-                    else
-                        following = false
-                        print("Target not valid anymore.")
-                        break
-                    end
+            for _, player in pairs(Players:GetPlayers()) do
+                if player.Name:lower():find(targetName:lower()) or player.DisplayName:lower():find(targetName:lower()) then
+                    targetPlayer = player
+                    break
                 end
-            end)()
+            end
+
+            if targetPlayer and targetPlayer.Character then
+                print("Following started.")
+
+                -- Play Animation
+                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    local animation = Instance.new("Animation")
+                    animation.AnimationId = "rbxassetid://" .. animationId
+                    activeAnimation = humanoid:LoadAnimation(animation)
+                    activeAnimation:Play()
+                end
+
+                coroutine.wrap(function()
+                    while following do
+                        local targetCharacter = targetPlayer.Character
+                        if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
+                            local targetHRP = targetCharacter.HumanoidRootPart
+
+                            -- Forward and backward motion
+                            local forwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, -2.5)
+                            local backwardCFrame = targetHRP.CFrame * CFrame.new(0, 0, -1.3)
+
+                            -- Tween forward
+                            local tweenForward = TweenService:Create(
+                                LocalPlayer.Character:FindFirstChild("HumanoidRootPart"),
+                                TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                                {CFrame = forwardCFrame}
+                            )
+                            tweenForward:Play()
+                            tweenForward.Completed:Wait()
+
+                            -- Tween backward
+                            local tweenBackward = TweenService:Create(
+                                LocalPlayer.Character:FindFirstChild("HumanoidRootPart"),
+                                TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                                {CFrame = backwardCFrame}
+                            )
+                            tweenBackward:Play()
+                            tweenBackward.Completed:Wait()
+                        else
+                            following = false
+                            print("Target not valid anymore.")
+                            break
+                        end
+                    end
+                end)()
+            else
+                print("Target not found!")
+                following = false
+            end
         else
-            print("Target not found!")
-        end
-    else
-        -- Stop following
-        following = false
-        print("Following stopped.")
+            -- Stop following
+            print("Following stopped.")
 
-        -- Stop Animation
-        if activeAnimation then
-            activeAnimation:Stop()
-            activeAnimation = nil
+            -- Stop Animation
+            if activeAnimation then
+                activeAnimation:Stop()
+                activeAnimation = nil
+            end
         end
-    end
-end
-
--- Keybind to toggle follow
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == toggleKey then
-        toggleFollow()
-    end
-end)
+    end,
+})
