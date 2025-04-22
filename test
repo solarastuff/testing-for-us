@@ -549,47 +549,121 @@ Tab:CreateInput({
 local scriptRunning = false
 local undoFunction
 
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+local TELEPORT_DISTANCE = 3
+local hitboxPart = nil
+local toggleEnabled = false -- Toggle state
+
+-- Function to find the nearest player
+local function getNearestPlayer()
+    local nearestPlayer = nil
+    local shortestDistance = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                nearestPlayer = player
+                shortestDistance = distance
+            end
+        end
+    end
+    return nearestPlayer
+end
+
+-- Function to handle touch events and teleport the local player away
+local function onHitboxTouched(otherPart)
+    if toggleEnabled and Character and otherPart:IsDescendantOf(Character) then
+        -- Calculate teleport direction and position
+        local direction = (HumanoidRootPart.Position - hitboxPart.Position).unit
+        local newPosition = HumanoidRootPart.Position + direction * TELEPORT_DISTANCE
+
+        -- Teleport player using CFrame
+        HumanoidRootPart.CFrame = CFrame.new(newPosition)
+    end
+end
+
+-- Function to create/remove hitbox based on "HoldingM1" attribute
+local function updateHitboxForPlayer(player)
+    local liveFolder = Workspace:FindFirstChild("Live")
+    if liveFolder then
+        local playerModel = liveFolder:FindFirstChild(player.Name)
+        if playerModel then
+            local holdingM1 = playerModel:GetAttribute("HoldingM1")
+            if holdingM1 == true then
+                -- Create or update the hitbox part
+                if not hitboxPart then
+                    hitboxPart = Instance.new("Part")
+                    hitboxPart.Anchored = true
+                    hitboxPart.CanCollide = false
+                    hitboxPart.Transparency = 0.5
+                    hitboxPart.BrickColor = BrickColor.new("Bright red")
+                    hitboxPart.Touched:Connect(onHitboxTouched) -- Connect the Touched event
+                    hitboxPart.Parent = Workspace
+                end
+                local targetHumanoidRootPart = player.Character.HumanoidRootPart
+                hitboxPart.Size = targetHumanoidRootPart.Size + Vector3.new(10, 10, 10) -- Make the hitbox significantly larger
+                hitboxPart.Position = targetHumanoidRootPart.Position -- Align hitbox with the player's position
+            else
+                -- Remove the hitbox if "HoldingM1" is false
+                if hitboxPart then
+                    hitboxPart:Destroy()
+                    hitboxPart = nil
+                end
+            end
+        end
+    end
+end
+
+-- Main loop
+RunService.Heartbeat:Connect(function()
+    if toggleEnabled then
+        local nearestPlayer = getNearestPlayer()
+        if nearestPlayer then
+            updateHitboxForPlayer(nearestPlayer) -- Check the "HoldingM1" attribute and update the hitbox
+        else
+            -- Remove the hitbox if no nearest player is found
+            if hitboxPart then
+                hitboxPart:Destroy()
+                hitboxPart = nil
+            end
+        end
+    else
+        -- Remove the hitbox if the toggle is disabled
+        if hitboxPart then
+            hitboxPart:Destroy()
+            hitboxPart = nil
+        end
+    end
+end)
+
+-- Rayfield Toggle
 local Toggle = Tab:CreateToggle({
-	Name = "Chat Modifier",
-	CurrentValue = false,
-	Flag = "ChatModToggle",
-	Callback = function(Value)
-		if Value then
-			-- Toggle ON: Run chat modifier script
-			if not scriptRunning then
-				local success, result = pcall(function()
-					return loadstring(game:HttpGet("https://pastefy.app/2DyqhuTU/raw"))()
-				end)
+    Name = "Enable Hitbox and Teleport",
+    CurrentValue = false, -- Default state of the toggle
+    Flag = "HitboxTeleportToggle", -- Unique identifier for configuration saving
+    Callback = function(Value)
+        toggleEnabled = Value -- Update the toggle state
+    end,
+})
+local Slider = Tab:CreateSlider({
+   Name = "teleport distance",
+   Range = {0, 30},
+   Increment = 2,
+   Suffix = "feet",
+   CurrentValue = 3,
+   Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Value)
 
-				if success then
-					scriptRunning = true
-					if typeof(result) == "function" then
-						undoFunction = result
-					end
-				else
-					warn("Failed to load chat script:", result)
-				end
-			end
-		else
-			-- Toggle OFF: Reset chat to normal
-			if undoFunction and typeof(undoFunction) == "function" then
-				pcall(undoFunction)  -- call cleanup
-			else
-				-- Fallback: try to restore normal chat behavior manually
-				local Player = game:GetService("Players").LocalPlayer
-				local ChatScript = Player:FindFirstChild("PlayerScripts"):FindFirstChild("ChatScript")
-				if ChatScript then
-					ChatScript:Destroy()
-					wait(0.1)
-					-- Reinsert default chat script
-					local newChatScript = game:GetService("Chat"):WaitForChild("ClientChatModules"):Clone()
-					newChatScript.Name = "ChatScript"
-					newChatScript.Parent = Player:FindFirstChild("PlayerScripts")
-				end
-			end
+ TELEPORT_DISTANCE = Value
 
-			scriptRunning = false
-			undoFunction = nil
-		end
-	end,
+   -- The function that takes place when the slider changes
+   -- The variable (Value) is a number which correlates to the value the slider is currently at
+   end,
 })
