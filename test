@@ -791,9 +791,9 @@ if Value == true then
 
 
 
-hitboxPart.Transparency = 1
-else
 hitboxPart.Transparency = 0.8
+else
+hitboxPart.Transparency = 1
 end
 
 
