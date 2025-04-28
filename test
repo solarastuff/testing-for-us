@@ -801,142 +801,19 @@ local Slider = Tab:CreateSlider({
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-
-local TELEPORT_DISTANCE = 20
-local hitboxPart = nil
-local toggleEnabled = false -- Toggle state
-
--- Function to find the nearest player
-local function getNearestPlayer()
-    local nearestPlayer = nil
-    local shortestDistance = math.huge
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                nearestPlayer = player
-                shortestDistance = distance
-            end
-        end
-    end
-    return nearestPlayer
-end
-
--- Function to handle touch events and teleport the local player away
-local function onHitboxTouched(otherPart)
-    if toggleEnabled and Character and otherPart:IsDescendantOf(Character) then
-        -- Calculate teleport direction and position
-        local direction = (HumanoidRootPart.Position - hitboxPart.Position).unit
-        local newPosition = HumanoidRootPart.Position + direction * TELEPORT_DISTANCE
-
-        -- Teleport player using CFrame
-        HumanoidRootPart.CFrame = CFrame.new(newPosition)
-    end
-end
-
--- Function to create/remove hitbox based on the presence of an "M1ing" accessory
-local function updateHitboxForPlayer(player)
-    local liveFolder = Workspace:FindFirstChild("Live")
-    if liveFolder then
-        local playerModel = liveFolder:FindFirstChild(player.Name)
-        if playerModel then
-            -- Continuously check for the "M1ing" accessory
-            local m1ingAccessory = playerModel:FindFirstChild("M1ing")
-            if not m1ingAccessory then
-                -- Accessory might not yet exist, so wait for it
-                spawn(function()
-                    m1ingAccessory = playerModel:WaitForChild("M1ing", 0.1) -- Brief wait to avoid blocking
-                end)
-            end
-
-            if m1ingAccessory and m1ingAccessory:IsA("Accessory") then
-                -- Create or update the hitbox part
-                if not hitboxPart then
-                    hitboxPart = Instance.new("Part")
-                    hitboxPart.Anchored = true
-                    hitboxPart.CanCollide = false
-                    hitboxPart.Transparency = 0.5
-                    hitboxPart.BrickColor = BrickColor.new("Bright red")
-                    hitboxPart.Touched:Connect(onHitboxTouched) -- Connect the Touched event
-                    hitboxPart.Parent = Workspace
-                end
-                local targetHumanoidRootPart = player.Character.HumanoidRootPart
-                hitboxPart.Size = targetHumanoidRootPart.Size + Vector3.new(10, 10, 10) -- Make the hitbox significantly larger
-                hitboxPart.Position = targetHumanoidRootPart.Position -- Align hitbox with the player's position
-            else
-                -- Remove the hitbox if "M1ing" accessory is not found
-                if hitboxPart then
-                    hitboxPart:Destroy()
-                    hitboxPart = nil
-                end
-            end
-        else
-            -- Ensure the hitbox is destroyed if player's model is not found
-            if hitboxPart then
-                hitboxPart:Destroy()
-                hitboxPart = nil
-            end
-        end
-    else
-        -- Ensure the hitbox is destroyed if "Live" folder is not found
-        if hitboxPart then
-            hitboxPart:Destroy()
-            hitboxPart = nil
-        end
-    end
-end
-
--- Main loop
-RunService.Heartbeat:Connect(function()
-    if toggleEnabled then
-        local nearestPlayer = getNearestPlayer()
-        if nearestPlayer then
-            updateHitboxForPlayer(nearestPlayer) -- Check for "M1ing" accessory and update the hitbox
-        else
-            -- Ensure the hitbox is destroyed if no nearest player is found
-            if hitboxPart then
-                hitboxPart:Destroy()
-                hitboxPart = nil
-            end
-        end
-    else
-        -- Ensure the hitbox is destroyed if the toggle is disabled
-        if hitboxPart then
-            hitboxPart:Destroy()
-            hitboxPart = nil
-        end
-    end
-end)
-
--- Rayfield Toggle
-local Toggle = Tab:CreateToggle({
-    Name = "Enable Hitbox and Teleport (Accessory Check)",
-    CurrentValue = false, -- Default state of the toggle
-    Flag = "HitboxTeleportAccessoryToggle", -- Unique identifier for configuration saving
-    Callback = function(Value)
-        toggleEnabled = Value -- Update the toggle state
-    end,
-})
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local toggleEnabled = false -- Toggle state
-local teleportMethod = "CFrame" -- Default teleport method
-local hitboxsiz = 15
-local TELEPORT_DISTANCE = 3.3
-local hitboxPart = nil
+local teleportMethod = "Tween" -- Default teleport method
 
 -- Function encapsulating all the logic
 local function HitboxAndTeleportLogic()
     local LocalPlayer = Players.LocalPlayer
     local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+    local TELEPORT_DISTANCE = 20
+    local hitboxPart = nil
 
     -- Function to find the nearest player
     local function getNearestPlayer()
@@ -957,14 +834,15 @@ local function HitboxAndTeleportLogic()
     -- Function to handle touch events and teleport the local player away
     local function onHitboxTouched(otherPart)
         if toggleEnabled and Character and otherPart:IsDescendantOf(Character) then
+            -- Calculate teleport direction and position
             local direction = (HumanoidRootPart.Position - hitboxPart.Position).Unit
             local newPosition = HumanoidRootPart.Position + direction * TELEPORT_DISTANCE
-            
+
             if teleportMethod == "CFrame" then
-                -- Teleport using CFrame
+                -- Instantly teleport using CFrame
                 HumanoidRootPart.CFrame = CFrame.new(newPosition)
             elseif teleportMethod == "Tween" then
-                -- Teleport using Tween
+                -- Smoothly teleport using Tween
                 local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear)
                 local goal = {CFrame = CFrame.new(newPosition)}
                 local tween = TweenService:Create(HumanoidRootPart, tweenInfo, goal)
@@ -979,9 +857,10 @@ local function HitboxAndTeleportLogic()
         if liveFolder then
             local playerModel = liveFolder:FindFirstChild(player.Name)
             if playerModel then
+                -- Continuously check for the "M1ing" accessory
                 local m1ingAccessory = playerModel:FindFirstChild("M1ing")
                 if not m1ingAccessory then
-                    for i = 1, 10 do
+                    for i = 1, 10 do -- Wait up to 1 second
                         task.wait(0.1)
                         m1ingAccessory = playerModel:FindFirstChild("M1ing")
                         if m1ingAccessory then
@@ -991,17 +870,18 @@ local function HitboxAndTeleportLogic()
                 end
 
                 if m1ingAccessory and m1ingAccessory:IsA("Accessory") then
+                    -- Create or update the hitbox part
                     if not hitboxPart then
                         hitboxPart = Instance.new("Part")
                         hitboxPart.Anchored = true
                         hitboxPart.CanCollide = false
-                        hitboxPart.Transparency = 0.6
-                        hitboxPart.BrickColor = BrickColor.new("Light stone grey")
+                        hitboxPart.Transparency = 0.5
+                        hitboxPart.BrickColor = BrickColor.new("Bright red")
                         hitboxPart.Touched:Connect(onHitboxTouched)
                         hitboxPart.Parent = Workspace
                     end
                     local targetHumanoidRootPart = player.Character.HumanoidRootPart
-                    hitboxPart.Size = targetHumanoidRootPart.Size + Vector3.new(hitboxsiz, hitboxsiz, hitboxsiz)
+                    hitboxPart.Size = targetHumanoidRootPart.Size + Vector3.new(10, 10, 10)
                     hitboxPart.Position = targetHumanoidRootPart.Position
                 else
                     if hitboxPart then
@@ -1023,6 +903,7 @@ local function HitboxAndTeleportLogic()
         end
     end
 
+    -- Main loop
     RunService.Heartbeat:Connect(function()
         if toggleEnabled then
             local nearestPlayer = getNearestPlayer()
@@ -1043,9 +924,9 @@ local function HitboxAndTeleportLogic()
     end)
 end
 
--- Rayfield UI Components
+-- Rayfield Toggle
 local Toggle = Tab:CreateToggle({
-    Name = "Auto Dodge (M1's) BETA",
+    Name = "Enable Hitbox and Teleport (Accessory Check)",
     CurrentValue = false,
     Flag = "HitboxTeleportAccessoryToggle",
     Callback = function(Value)
@@ -1056,36 +937,13 @@ local Toggle = Tab:CreateToggle({
     end,
 })
 
-local Slider1 = Tab:CreateSlider({
-    Name = "Teleport Distance",
-    Range = {0, 30},
-    Increment = 2,
-    Suffix = "feet",
-    CurrentValue = 3.3,
-    Flag = "Slider1",
-    Callback = function(Value)
-        TELEPORT_DISTANCE = Value
-    end,
-})
-
-local Slider2 = Tab:CreateSlider({
-    Name = "Hitbox Size",
-    Range = {0, 30},
-    Increment = 1,
-    Suffix = "size",
-    CurrentValue = 15,
-    Flag = "Slider2",
-    Callback = function(Value)
-        hitboxsiz = Value
-    end,
-})
-
+-- Rayfield Dropdown
 local Dropdown = Tab:CreateDropdown({
     Name = "Teleport Method",
     Options = {"CFrame", "Tween"},
-    CurrentOption = "CFrame",
-    Flag = "Dropdown1",
-    Callback = function(Value)
-        teleportMethod = Value
+    CurrentOption = "Tween",
+    Flag = "TeleportMethodDropdown",
+    Callback = function(Option)
+        teleportMethod = Option
     end,
 })
