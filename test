@@ -924,6 +924,9 @@ local Toggle = Tab:CreateToggle({
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local toggleEnabled = false -- Toggle state
 
 -- Function encapsulating all the logic
 local function HitboxAndTeleportLogic()
@@ -933,7 +936,6 @@ local function HitboxAndTeleportLogic()
 
     local TELEPORT_DISTANCE = 20
     local hitboxPart = nil
-    local toggleEnabled = false -- Toggle state
 
     -- Function to find the nearest player
     local function getNearestPlayer()
@@ -951,15 +953,18 @@ local function HitboxAndTeleportLogic()
         return nearestPlayer
     end
 
-    -- Function to handle touch events and teleport the local player away
+    -- Function to handle touch events and teleport the local player away (using tween)
     local function onHitboxTouched(otherPart)
         if toggleEnabled and Character and otherPart:IsDescendantOf(Character) then
             -- Calculate teleport direction and position
-            local direction = (HumanoidRootPart.Position - hitboxPart.Position).unit
+            local direction = (HumanoidRootPart.Position - hitboxPart.Position).Unit
             local newPosition = HumanoidRootPart.Position + direction * TELEPORT_DISTANCE
 
-            -- Teleport player using CFrame
-            HumanoidRootPart.CFrame = CFrame.new(newPosition)
+            -- Tween player very fast to new position
+            local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear) -- 0.1 seconds fast tween
+            local goal = {CFrame = CFrame.new(newPosition)}
+            local tween = TweenService:Create(HumanoidRootPart, tweenInfo, goal)
+            tween:Play()
         end
     end
 
@@ -973,7 +978,7 @@ local function HitboxAndTeleportLogic()
                 local m1ingAccessory = playerModel:FindFirstChild("M1ing")
                 if not m1ingAccessory then
                     -- Accessory might not yet exist, so wait for it
-                    for i = 1, 10 do -- Wait for up to 1 second
+                    for i = 1, 10 do -- Wait up to 1 second
                         task.wait(0.1)
                         m1ingAccessory = playerModel:FindFirstChild("M1ing")
                         if m1ingAccessory then
@@ -1024,7 +1029,7 @@ local function HitboxAndTeleportLogic()
         if toggleEnabled then
             local nearestPlayer = getNearestPlayer()
             if nearestPlayer then
-                updateHitboxForPlayer(nearestPlayer) -- Check for "M1ing" accessory and update the hitbox
+                updateHitboxForPlayer(nearestPlayer) -- Check for "M1ing" accessory and update hitbox
             else
                 -- Ensure the hitbox is destroyed if no nearest player is found
                 if hitboxPart then
@@ -1042,7 +1047,7 @@ local function HitboxAndTeleportLogic()
     end)
 end
 
--- Rayfield Toggle
+-- Rayfield Toggle (make sure this is after defining toggleEnabled)
 local Toggle = Tab:CreateToggle({
     Name = "Enable Hitbox and Teleport (Accessory Check)",
     CurrentValue = false, -- Default state of the toggle
