@@ -1622,3 +1622,155 @@ Tab:CreateToggle({
 })
 
 warn("Autoparry loaded")
+
+local players = game:GetService("Players")
+local plr = players.LocalPlayer
+local camera = workspace.CurrentCamera
+local cd = false
+
+local Settings = {
+    Autoparry = { Toggle = true, Range = 11, Delay = 0, Fov = 360, Facing = false, Dodgerange = 3, Aimhelper = false },
+    ESP = { Toggle = false, Config = {} },
+    Tpaura = { Toggle = false },
+}
+
+local anims = {
+    -- your animations here...
+}
+local dodges = {
+    -- your dodges here...
+}
+local barrages = {
+    -- your barrages here...
+}
+local abilities = {
+    -- your abilities here...
+}
+
+local closestplr, anim, plrDirection, unit, value, dodge
+
+function closest()
+    closestplr = {}
+    for i, v in next, players:GetPlayers() do
+        if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v ~= plr then
+            local dist = (v.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            if dist < Settings.Autoparry.Range then
+                table.insert(closestplr, v)
+            end
+        end
+    end
+    return closestplr
+end
+
+function attackchecker()
+    for _, Anim in next, plr.Character.Humanoid.Animator:GetPlayingAnimationTracks() do
+        if anims[Anim.Animation.AnimationId] or dodges[Anim.Animation.AnimationId] or abilities[Anim.Animation.AnimationId] or barrages[Anim.Animation.AnimationId] then
+            return true
+        end
+    end
+    return false
+end
+
+function isfacing(object)
+    if Settings.Autoparry.Toggle and Settings.Autoparry.Facing then
+        plrDirection = plr.Character.Head.CFrame.LookVector
+        unit = (object.Head.Position - plr.Character.Head.Position).Unit
+        value = ((plrDirection - unit).Magnitude / 2) ^ 2
+        return value < Settings.Autoparry.Fov / 360
+    end
+    return true
+end
+
+function allowed(enemy)
+    if not plr.Character:FindFirstChild("M1ing") and not attackchecker() and isfacing(enemy) then
+        return true
+    end
+end
+
+local durations = {
+    ["anim"] = 0.3,
+    ["dodge"] = 0.9,
+    ["barrage"] = 0.9,
+    ["ability"] = 0.6,
+}
+
+function def(action)
+    if cd then return end
+    task.wait(Settings.Autoparry.Delay)
+    cd = true
+    plr.Character.Communicate:FireServer({ Goal = "KeyPress", Key = Enum.KeyCode.F })
+    task.wait(durations[action])
+    plr.Character.Communicate:FireServer({ Goal = "KeyRelease", Key = Enum.KeyCode.F })
+    cd = false
+end
+
+-- New LOCK-ON system
+local isLocking = false
+function lockOn(target)
+    if not target then return end
+    isLocking = true
+    while isLocking and target.Parent and target:FindFirstChild("HumanoidRootPart") do
+        camera.CFrame = CFrame.lookAt(camera.CFrame.Position, target.HumanoidRootPart.Position)
+        task.wait() -- run every frame
+    end
+end
+
+function unlock()
+    isLocking = false
+end
+
+function parry()
+    for _, c in closest() do
+        if c and c.Character and c.Character:FindFirstChild("Humanoid") and c.Character.Humanoid:FindFirstChild("Animator") then
+            for _, v in next, c.Character.Humanoid.Animator:GetPlayingAnimationTracks() do
+                anim = anims[v.Animation.AnimationId]
+                dodge = dodges[v.Animation.AnimationId]
+                ability = abilities[v.Animation.AnimationId]
+                barrage = barrages[v.Animation.AnimationId]
+                if allowed(c.Character) and anim and v.TimePosition >= anim[1] and v.TimePosition <= anim[2] then
+                    task.spawn(function()
+                        def("anim")
+                        lockOn(c.Character)
+                        task.delay(durations["anim"], unlock)
+                    end)
+                elseif allowed(c.Character) and dodge and v.TimePosition > dodge[1] and v.TimePosition < dodge[2] then
+                    task.spawn(function()
+                        def("dodge")
+                        lockOn(c.Character)
+                        task.delay(durations["dodge"], unlock)
+                    end)
+                elseif allowed(c.Character) and barrage and v.TimePosition > barrage[1] and v.TimePosition < barrage[2] then
+                    task.spawn(function()
+                        def("barrage")
+                        lockOn(c.Character)
+                        task.delay(durations["barrage"], unlock)
+                    end)
+                elseif allowed(c.Character) and ability and v.TimePosition > ability[1] and v.TimePosition < ability[2] then
+                    task.spawn(function()
+                        def("ability")
+                        lockOn(c.Character)
+                        task.delay(durations["ability"], unlock)
+                    end)
+                end
+            end
+        end
+    end
+end
+
+-- Run autoparry loop
+task.spawn(function()
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if Settings.Autoparry.Toggle then
+            parry()
+        end
+    end)
+end)
+
+-- Rayfield TOGGLE ONLY (no window, no loadstring)
+Tab:CreateToggle({
+    Name = "Autoparry",
+    CurrentValue = true,
+    Callback = function(Value)
+        Settings.Autoparry.Toggle = Value
+    end,
+})
