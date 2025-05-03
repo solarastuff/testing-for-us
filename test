@@ -1279,7 +1279,7 @@ local autoparryEnabled = false
 local camera = game:GetService("Workspace").CurrentCamera
 
 -- Rayfield toggle setup
-Rayfield:CreateToggle({
+Tab:CreateToggle({
     Name = "Autoparry",
     CurrentValue = false,
     Callback = function(Value)
