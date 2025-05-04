@@ -1968,8 +1968,8 @@ local abilities = {
 
 --===[ Rayfield Toggle Section - Add the toggle for Auto Parry here ]===--
 
-YourSection:CreateToggle({
-    Name = "Auto Parry",
+Tab:CreateToggle({
+    Name = "Auto Parrysy",
     CurrentValue = true,
     Flag = "AutoParryToggle",
     Callback = function(Value)
