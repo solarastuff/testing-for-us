@@ -1,0 +1,36 @@
+--cooldown
+
+local player = game.Players.LocalPlayer
+local cooldown = 5
+local OnCooldown = false
+
+-- Make tool
+local tool = Instance.new("Tool")
+tool.Name = "SpamTool"
+tool.RequiresHandle = false
+tool.Parent = player:WaitForChild("Backpack")
+
+
+function used()
+
+if not OnCooldown then
+print("M1")
+
+
+OnCooldown = true
+task.wait(cooldown)
+OnCooldown = false
+end
+
+ 
+
+end
+
+
+-- Tool activated
+tool.Activated:Connect(used)
+
+
+
+
+
